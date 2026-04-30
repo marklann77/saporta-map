@@ -89,6 +89,13 @@ header {
 .card-meta { font-size:0.65rem; color:var(--muted); display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
 .card-zone-badge { font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; background:#e8f0f8; color:var(--navy); padding:1px 5px; border-radius:2px; }
 .card-zone-dim { opacity:0.3; }
+#header-status {
+  position:absolute; left:50%; transform:translateX(-50%);
+  font-size:0.72rem; font-weight:600; color:rgba(255,255,255,0.6);
+  letter-spacing:0.04em; white-space:nowrap; pointer-events:none;
+  transition:opacity 0.6s;
+}
+#header-status.done { opacity:0; }
 .card-no-pin { font-size:0.58rem; color:var(--muted); font-style:italic; }
 
 /* pin layer - no cluster styles needed */
@@ -97,14 +104,19 @@ header {
 .sr-marker { position:relative; cursor:pointer; }
 .sr-pin-card {
   position:absolute; bottom:calc(100% + 2px); left:50%; transform:translateX(-50%);
-  width:134px; background:var(--navy); border-radius:5px; overflow:visible;
+  width:150px; background:var(--navy); border-radius:5px; overflow:hidden;
   box-shadow:0 3px 14px rgba(0,0,0,0.3); pointer-events:none;
+  transition:transform 0.15s, box-shadow 0.15s;
+}
+.sr-marker:hover .sr-pin-card {
+  transform:translateX(-50%) translateY(-2px);
+  box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 .sr-pin-card::after {
   content:''; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%);
   border:7px solid transparent; border-top:7px solid var(--navy); border-bottom:none;
 }
-.pin-img { width:100%; height:68px; object-fit:cover; display:block; border-radius:5px 5px 0 0; }
+.pin-img { width:150px; height:75px; object-fit:cover; display:block; }
 .pin-img-ph { width:100%; height:36px; background:rgba(255,255,255,0.07); border-radius:5px 5px 0 0; }
 .pin-body { padding:6px 7px 8px; }
 .pin-title { font-size:0.63rem; font-weight:700; color:var(--white); line-height:1.3; margin-bottom:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -147,26 +159,30 @@ header {
 #load-error code { background:#e8f0f8; padding:2px 6px; border-radius:3px; font-size:0.8rem; color:var(--navy); }
 #load-error a { color:var(--navy); font-weight:700; }
 
-/* ── Time range toggle ── */
-.time-toggle {
-  display:flex; align-items:center;
-  background:rgba(255,255,255,0.08);
-  border:1px solid rgba(255,255,255,0.2);
-  border-radius:4px; overflow:hidden;
+#loading-overlay {
+  position:absolute; inset:0; background:rgba(244,246,250,0.92);
+  z-index:998; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px;
+  pointer-events:none; transition:opacity 0.6s;
 }
-.time-toggle button {
-  font-family:'Source Sans 3',sans-serif; font-size:0.7rem; font-weight:700;
-  text-transform:uppercase; letter-spacing:0.08em;
-  padding:4px 11px; border:none; cursor:pointer;
-  background:transparent; color:rgba(255,255,255,0.5);
-  transition:background 0.15s, color 0.15s;
-  white-space:nowrap;
+#loading-overlay.done { opacity:0; pointer-events:none; }
+.loading-spinner {
+  width:36px; height:36px; border:3px solid var(--border);
+  border-top-color:var(--navy); border-radius:50%;
+  animation:spin 0.8s linear infinite;
 }
-.time-toggle button.active {
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:0.8rem; font-weight:600; color:var(--navy); letter-spacing:0.04em; }
+.loading-sub { font-size:0.7rem; color:var(--muted); }
+
+/* NEW badge on pin cards */
+.pin-new-badge {
+  position:absolute; top:6px; right:6px;
   background:var(--gold); color:var(--navy);
-}
-.time-toggle button:not(.active):hover {
-  background:rgba(255,255,255,0.1); color:var(--white);
+  font-size:0.52rem; font-weight:800;
+  letter-spacing:0.1em; text-transform:uppercase;
+  padding:2px 5px; border-radius:2px;
+  line-height:1.2; pointer-events:none;
 }
 /* Cluster badge override */
 .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background:rgba(13,43,94,0.18) !important; }
@@ -180,6 +196,7 @@ header {
 
 <header>
   <div class="site-wordmark">SaportaReport</div>
+  <div id="header-status">Loading stories… please wait up to 30 seconds</div>
   <div class="header-right">
     <select id="zone-filter">
       <option value="all">All Zones</option>
@@ -196,10 +213,6 @@ header {
       <option value="Henry / South Metro">Henry / South Metro</option>
       <option value="Georgia (Statewide)">Georgia (Statewide)</option>
     </select>
-    <div class="time-toggle">
-      <button id="btn-30" class="active" onclick="setWindow(30)">30 days</button>
-      <button id="btn-90" onclick="setWindow(90)">90 days</button>
-    </div>
     <div id="pin-count">Loading…</div>
   </div>
 </header>
@@ -213,11 +226,17 @@ header {
 </div>
 
 <div class="layout">
-  <div id="map"><div id="toast">Loading stories…</div></div>
+  <div id="map">
+    <div id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading stories…</div>
+      <div class="loading-sub">This may take up to 30 seconds</div>
+    </div>
+    <div id="toast">Loading…</div></div>
   <div id="sidebar">
     <div class="sidebar-header">
       <h2>Recent Stories</h2>
-      <p id="sidebar-sub">Last 30 days</p>
+      <p id="sidebar-sub">Last 90 days</p>
     </div>
     <div id="story-list"></div>
   </div>
@@ -239,7 +258,7 @@ const CENTER  = [33.749, -84.388];
 const ZOOM    = 11;
 const GEO_URL = 'https://nominatim.openstreetmap.org/search';
 
-let activeDays = 30;  // default; toggled by setWindow()
+let activeDays = 90;  // fixed at 90 days — no toggle
 
 // ONLY exclude true multi-story roundup formats with no single location.
 // Find exact slugs at: saportareport.com/wp-json/wp/v2/categories?per_page=100
@@ -264,7 +283,7 @@ const ZONES = [
   { name:'Smyrna / Marietta',         lat:33.882, lng:-84.467, zoom:12, keys:['Smyrna','Marietta','Cobb County','Vinings','Cumberland','Kennesaw','Acworth','Powder Springs'] },
   { name:'Gwinnett',                  lat:33.898, lng:-84.023, zoom:11, keys:['Gwinnett','Lawrenceville','Duluth','Norcross','Suwanee','Buford','Snellville','Lilburn','Dacula','Loganville'] },
   { name:'Henry / South Metro',       lat:33.440, lng:-84.340, zoom:11, keys:['Henry County','Stockbridge','McDonough','Hampton','Locust Grove','Lovejoy','Hartsfield','Airport','Hapeville'] },
-  { name:'Georgia (Statewide)',        lat:32.900, lng:-83.400, zoom:7,  keys:['Plant Vogtle','Vogtle','Dunaway Gardens','Warm Springs','Savannah','Augusta','Columbus','Macon','Athens','Brunswick','Valdosta','Albany','Rome','Dalton','Gainesville','LaGrange','Carrollton','Newnan','Griffin','Warner Robins','Milledgeville','Statesboro','Tifton','Waycross','Brunswick','Burke County','Waynesboro','Bainbridge','Thomasville','Moultrie','Douglas'] },
+  { name:'Georgia (Statewide)',        lat:32.900, lng:-83.400, zoom:7,  keys:['Plant Vogtle','Vogtle','Dunaway Gardens','Warm Springs','Savannah','Augusta','Columbus','Macon','Athens','Brunswick','Valdosta','Albany','Rome','Dalton','Gainesville','LaGrange','Carrollton','Newnan','Griffin','Warner Robins','Milledgeville','Statesboro','Tifton','Waycross','Burke County','Waynesboro','Bainbridge','Thomasville','Moultrie','Douglas','southern Georgia','South Georgia','Brantley County','Clinch County','Echols County','Ware County','Coffee County','Pierce County','Bacon County','Atkinson County','Berrien County','Lanier County','Lowndes County','Cook County','Colquitt County','Thomas County','Brooks County','Grady County','Mitchell County','Dougherty County','Lee County','Worth County','Crisp County','Wilcox County','Ben Hill County','Irwin County','Turner County','Tift County'] },
 ];
 
 function detectZone(text) {
@@ -282,8 +301,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   subdomains:'abcd', maxZoom:19
 }).addTo(map);
 
-const pinLayer     = L.layerGroup();          // no-cluster (30 days)
-const clusterLayer = L.markerClusterGroup({   // clustered  (90 days)
+const activeLayer = L.markerClusterGroup({
   showCoverageOnHover: false,
   maxClusterRadius: 48,
   iconCreateFunction(cluster) {
@@ -294,10 +312,7 @@ const clusterLayer = L.markerClusterGroup({   // clustered  (90 days)
     });
   }
 });
-
-// activeLayer always points to whichever layer is currently on the map
-let activeLayer = pinLayer;
-map.addLayer(pinLayer); // start with no-cluster (30 days default)
+map.addLayer(activeLayer);
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -395,20 +410,22 @@ function addStory(post, latlng, zone) {
   // ── Marker (only if we have a location) ──
   let marker = null;
   if (isMapped) {
+    const isNew = (Date.now() - new Date(post.date).getTime()) < 7 * 86400000;
     const imgHtml = thumb
       ? `<img class="pin-img" src="${thumb}" onerror="this.outerHTML='<div class=pin-img-ph></div>'">`
       : '<div class="pin-img-ph"></div>';
+    const newBadge = isNew ? '<span class="pin-new-badge">NEW</span>' : '';
 
+    // Pin card opens popup on click — Leaflet handles the click on the marker
     const icon = L.divIcon({
       className:'sr-marker',
-      html:`<div class="sr-pin-card">${imgHtml}<div class="pin-body"><div class="pin-title">${title}</div><div class="pin-date">${date}</div></div></div><div class="pin-dot"></div>`,
-      iconSize:[11,11], iconAnchor:[6,6], popupAnchor:[67,-26]
+      html:`<div class="sr-pin-card">${imgHtml}${newBadge}<div class="pin-body"><div class="pin-title">${title}</div><div class="pin-date">${date}</div></div></div><div class="pin-dot"></div>`,
+      iconSize:[11,11], iconAnchor:[6,6], popupAnchor:[75,-130]
     });
 
     const popImg = thumb
       ? `<img class="sr-popup-img" src="${thumb}" onerror="this.style.display='none'">`
       : '<div class="sr-popup-ph">SaportaReport</div>';
-
     const popHtml = `<div class="sr-popup">${popImg}<div class="sr-popup-body"><div class="sr-popup-date">${date}</div><div class="sr-popup-title">${title}</div>${place?`<div class="sr-popup-loc">📍 ${place}</div>`:''}<a class="sr-popup-link" href="${post.link}" target="_blank" rel="noopener">Read Story</a></div></div>`;
 
     marker = L.marker(latlng, { icon }).bindPopup(popHtml, { maxWidth:240 });
@@ -425,10 +442,12 @@ function addStory(post, latlng, zone) {
     ? `<img class="card-thumb" src="${thumb}" onerror="this.outerHTML='<div class=card-thumb-ph>SR</div>'">`
     : '<div class="card-thumb-ph">SR</div>';
 
+  const isNew = (Date.now() - new Date(post.date).getTime()) < 7 * 86400000;
   const zoneBadge = zone ? `<span class="card-zone-badge">${zone}</span>` : '';
+  const newLabel = isNew ? `<span style="font-size:0.58rem;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:0.08em">New</span>` : '';
   const noPin = !isMapped ? `<span class="card-no-pin">not pinned</span>` : '';
 
-  card.innerHTML = `${thumbHtml}<div><div class="card-title">${title}</div><div class="card-meta">${zoneBadge}<span>${date}</span>${noPin}</div></div>`;
+  card.innerHTML = `${thumbHtml}<div><div class="card-title">${title}</div><div class="card-meta">${newLabel}${zoneBadge}<span>${date}</span>${noPin}</div></div>`;
 
   if (isMapped && marker) {
     card.addEventListener('click', () => {
@@ -481,45 +500,6 @@ document.getElementById('zone-filter').addEventListener('change', function() {
       : `${matchCount} in ${activeZone}`;
 });
 
-// ─── TIME WINDOW TOGGLE ───────────────────────────────────────────────────────
-async function setWindow(days) {
-  if (days === activeDays) return;
-  activeDays = days;
-
-  // Update button states
-  document.getElementById('btn-30').classList.toggle('active', days === 30);
-  document.getElementById('btn-90').classList.toggle('active', days === 90);
-
-  // Swap the active layer: 30 days = plain, 90 days = clustered
-  const nextLayer = days === 30 ? pinLayer : clusterLayer;
-  if (activeLayer !== nextLayer) {
-    map.removeLayer(activeLayer);
-    activeLayer = nextLayer;
-    map.addLayer(activeLayer);
-  }
-
-  // Clear everything and reload
-  pinLayer.clearLayers();
-  clusterLayer.clearLayers();
-  addedIds.clear();
-  allStories.length = 0;
-  mappedSection.innerHTML = '';
-  unmappedSection.innerHTML = '';
-  unmappedSectionLabel.style.display = '';
-  unmappedSection.style.display = '';
-  document.getElementById('zone-filter').value = 'all';
-  activeZone = 'all';
-
-  document.getElementById('pin-count').textContent = 'Loading…';
-  document.getElementById('sidebar-sub').textContent = `Last ${days} days`;
-
-  try {
-    const t = await fetch(`${WP_API}?per_page=1`, { signal: AbortSignal.timeout(5000) });
-    if (t.ok) { await loadStories(); return; }
-  } catch(e) {}
-  loadDemo();
-}
-
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function toast(msg, fade=false) {
   const el = document.getElementById('toast');
@@ -529,17 +509,14 @@ function toast(msg, fade=false) {
 
 // ─── LOAD FROM API ────────────────────────────────────────────────────────────
 async function loadStories() {
-  const after = new Date(Date.now() - activeDays * 86400000).toISOString();
-  const needs2pages = activeDays > 30;
+  const after = new Date(Date.now() - 90 * 86400000).toISOString();
 
   let posts;
   try {
     const fetches = [
       fetch(`${WP_API}?per_page=100&page=1&after=${after}&_embed=1&_fields=id,title,date,link,excerpt,_links,_embedded&orderby=date&order=desc`),
+      fetch(`${WP_API}?per_page=100&page=2&after=${after}&_embed=1&_fields=id,title,date,link,excerpt,_links,_embedded&orderby=date&order=desc`),
     ];
-    if (needs2pages) fetches.push(
-      fetch(`${WP_API}?per_page=100&page=2&after=${after}&_embed=1&_fields=id,title,date,link,excerpt,_links,_embedded&orderby=date&order=desc`)
-    );
     const results = await Promise.all(fetches);
     const pages = await Promise.all(results.map(r => r.ok ? r.json() : []));
     posts = pages.flat();
@@ -548,7 +525,7 @@ async function loadStories() {
   } catch(e) { toast('API unreachable — showing demo'); loadDemo(); return; }
 
   if (!posts.length) { toast('No stories found', true); return; }
-  toast(`${posts.length} stories (${activeDays} days) — geolocating…`);
+  toast(`${posts.length} stories (last 90 days) — geolocating…`);
 
   let pinned = 0, roundups = 0;
   for (const post of posts) {
@@ -559,7 +536,7 @@ async function loadStories() {
       toast(`Mapping… ${pinned} pinned · ${roundups} roundups`);
   }
   updateCounts(pinned, roundups);
-  toast(`Done — ${pinned} stories mapped across ${activeDays} days`, true);
+  toast(`Done — ${pinned} stories mapped across last 90 days`, true);
 }
 
 async function processPost(post) {
@@ -629,11 +606,16 @@ async function processPost(post) {
 
 function updateCounts(pinned, roundups) {
   document.getElementById('pin-count').textContent = `${pinned} stories`;
-  document.getElementById('sidebar-sub').textContent = `Last ${activeDays} days · ${pinned} mapped · ${roundups} roundups`;
+  document.getElementById('sidebar-sub').textContent = `Last 90 days · ${pinned} mapped · ${roundups} roundups`;
   if (roundups === 0) {
     unmappedSectionLabel.style.display = 'none';
     unmappedSection.style.display = 'none';
   }
+  // Dismiss loading overlay and header status
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.add('done');
+  const hs = document.getElementById('header-status');
+  if (hs) { hs.textContent = `${pinned} stories mapped · last 90 days`; hs.classList.add('done'); }
 }
 
 // ─── DEMO ─────────────────────────────────────────────────────────────────────
@@ -682,6 +664,10 @@ function loadDemo() {
   document.getElementById('pin-count').textContent = `${mapped.length} stories`;
   document.getElementById('sidebar-sub').textContent = `Preview mode · ${mapped.length} mapped · ${roundupItems.length} roundups`;
   toast('Preview mode — embed on saportareport.com for live data', true);
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.add('done');
+  const hs = document.getElementById('header-status');
+  if (hs) hs.classList.add('done');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
